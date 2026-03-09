@@ -7,7 +7,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.widget.Toast
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -28,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         private const val REPLY_MSG = "Weiter"
     }
 
-    private val requiredPermissions = buildList {
+    private val requiredPermissions: List<String> get() = buildList {
         add(Manifest.permission.RECEIVE_SMS)
         add(Manifest.permission.READ_SMS)
         add(Manifest.permission.SEND_SMS)
@@ -39,12 +40,13 @@ class MainActivity : AppCompatActivity() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        updatePermissionUI()
+    ) {
+        updateUI()
         if (allGranted()) {
             startSmsService()
-            showSnackbar("✓ Alle Berechtigungen erteilt!")
-            getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_DONE, true).apply()
+            showSnackbar("✓ Alle Berechtigungen erteilt — Service läuft!")
+            getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_DONE, true).apply()
         } else {
             showSnackbar("Bitte alle Berechtigungen erteilen")
         }
@@ -54,19 +56,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         setupButtons()
-        updatePermissionUI()
-
-        if (allGranted()) {
-            startSmsService()
-            getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_DONE, true).apply()
-        }
+        updateUI()
+        if (allGranted()) startSmsService()
     }
 
     override fun onResume() {
         super.onResume()
-        updatePermissionUI()
+        updateUI()
     }
 
     private fun setupButtons() {
@@ -80,8 +77,13 @@ class MainActivity : AppCompatActivity() {
                 showSnackbar("⚠ Bitte zuerst SMS-Berechtigung erteilen")
                 return@setOnClickListener
             }
-            sendSmsViaWorker(TARGET_PHONE, REPLY_MSG)
-            showSnackbar("📤 Test-SMS wird gesendet an $TARGET_PHONE...")
+            val data = Data.Builder()
+                .putString("phoneNumber", TARGET_PHONE)
+                .putString("message", REPLY_MSG)
+                .build()
+            WorkManager.getInstance(this)
+                .enqueue(OneTimeWorkRequestBuilder<SmsReplyWorker>().setInputData(data).build())
+            showSnackbar("📤 Test-SMS wird gesendet an $TARGET_PHONE")
         }
 
         binding.btnStartService.setOnClickListener {
@@ -94,37 +96,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updatePermissionUI() {
-        val smsOk = isGranted(Manifest.permission.RECEIVE_SMS) && isGranted(Manifest.permission.READ_SMS)
+    private fun updateUI() {
+        val smsOk  = isGranted(Manifest.permission.RECEIVE_SMS) && isGranted(Manifest.permission.READ_SMS)
         val sendOk = isGranted(Manifest.permission.SEND_SMS)
         val notifOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             isGranted(Manifest.permission.POST_NOTIFICATIONS) else true
 
-        setPermRow(binding.tvPermSms, binding.icPermSms, smsOk)
-        setPermRow(binding.tvPermSend, binding.icPermSend, sendOk)
+        setPermRow(binding.tvPermSms,   binding.icPermSms,   smsOk)
+        setPermRow(binding.tvPermSend,  binding.icPermSend,  sendOk)
         setPermRow(binding.tvPermNotif, binding.icPermNotif, notifOk)
 
         val all = allGranted()
         binding.btnGrantPermissions.visibility = if (all) View.GONE else View.VISIBLE
 
         if (all) {
-            binding.tvStatus.text = "● Service aktiv – überwacht O2 SMS"
+            binding.tvStatus.text = "Service aktiv — überwacht O2 SMS"
             binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.success))
         } else {
-            binding.tvStatus.text = "⚠ Berechtigungen erforderlich"
+            binding.tvStatus.text = "Berechtigungen erforderlich"
             binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.warning))
         }
     }
 
-    private fun setPermRow(label: android.widget.TextView, icon: android.widget.ImageView, granted: Boolean) {
+    private fun setPermRow(tv: TextView, iv: ImageView, granted: Boolean) {
         if (granted) {
-            label.text = "✓"
-            label.setTextColor(ContextCompat.getColor(this, R.color.success))
-            icon.setImageResource(R.drawable.ic_check_circle)
+            tv.text = "✓"
+            tv.setTextColor(ContextCompat.getColor(this, R.color.success))
+            iv.setImageResource(R.drawable.ic_check_circle)
         } else {
-            label.text = "✗"
-            label.setTextColor(ContextCompat.getColor(this, R.color.error))
-            icon.setImageResource(R.drawable.ic_error_circle)
+            tv.text = "✗"
+            tv.setTextColor(ContextCompat.getColor(this, R.color.error))
+            iv.setImageResource(R.drawable.ic_error_circle)
         }
     }
 
@@ -137,15 +139,6 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, SmsService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
         else startService(intent)
-    }
-
-    private fun sendSmsViaWorker(phone: String, msg: String) {
-        val data = Data.Builder()
-            .putString("phoneNumber", phone)
-            .putString("message", msg)
-            .build()
-        WorkManager.getInstance(this)
-            .enqueue(OneTimeWorkRequestBuilder<SmsReplyWorker>().setInputData(data).build())
     }
 
     private fun showSnackbar(msg: String) {
