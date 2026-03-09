@@ -19,14 +19,26 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Gradle wrapper jar
+        run: |
+          mkdir -p gradle/wrapper
+          curl -sL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
+          cp /tmp/gradle-dist/gradle-8.9/lib/plugins/gradle-wrapper-*.jar gradle/wrapper/gradle-wrapper.jar || \
+          find /tmp/gradle-dist -name "gradle-wrapper.jar" -exec cp {} gradle/wrapper/gradle-wrapper.jar \;
+          ls -lh gradle/wrapper/
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --info
 
-      - name: Show APK path
-        run: find . -name "*.apk" 2>/dev/null || echo "No APK found"
+      - name: Show generated files
+        run: find app/build/outputs -type f 2>/dev/null || echo "No outputs found"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
