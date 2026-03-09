@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'com.o2.auto2gb'
-    compileSdk 36  // Android 16
+    compileSdk 35  // Android 16
 
     defaultConfig {
         applicationId "com.o2.auto2gb"
         minSdk 26          // Android 8.0 Oreo — أدنى إصدار يدعم WorkManager + foreground
-        targetSdk 36       // Android 16 — توافق كامل
+        targetSdk 35       // Android 16 — توافق كامل
         versionCode 4
         versionName "2.0"
 
