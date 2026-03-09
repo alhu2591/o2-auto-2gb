@@ -4,8 +4,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // AGP 8.8.0 — أحدث إصدار يدعم compileSdk 36 / Android 16
-        classpath 'com.android.tools.build:gradle:8.8.0'
+        classpath 'com.android.tools.build:gradle:8.7.3'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21"
     }
 }

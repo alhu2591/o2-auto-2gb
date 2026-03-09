@@ -5,16 +5,14 @@ plugins {
 
 android {
     namespace 'com.o2.auto2gb'
-    compileSdk 35  // Android 16
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.o2.auto2gb"
-        minSdk 26          // Android 8.0 Oreo — أدنى إصدار يدعم WorkManager + foreground
-        targetSdk 35       // Android 16 — توافق كامل
+        minSdk 26
+        targetSdk 35
         versionCode 4
         versionName "2.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -22,7 +20,7 @@ android {
             debuggable true
         }
         release {
-            minifyEnabled true   // تصغير الكود في الإصدار النهائي
+            minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -38,9 +36,8 @@ android {
 }
 
 dependencies {
-    // لا نستخدم appcompat لأن SetupActivity تمتد من Activity مباشرة
     implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
-
-    testImplementation 'junit:junit:4.13.2'
 }

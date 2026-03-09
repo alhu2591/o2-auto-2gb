@@ -24,15 +24,21 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK platform 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
-
-      - name: Show outputs
-        if: always()
-        run: find . -name "*.apk" 2>/dev/null || echo "No APK found"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: O2-Auto-2GB
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
