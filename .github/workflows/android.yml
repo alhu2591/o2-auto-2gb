@@ -29,27 +29,8 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Debug environment
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls $ANDROID_HOME/platforms/ || echo "no platforms"
-          ls $ANDROID_HOME/build-tools/ || echo "no build-tools"
-          java -version
-
-      - name: Build Debug APK
-        run: |
-          export ANDROID_HOME=$ANDROID_HOME
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          gradle assembleDebug --stacktrace --info 2>&1 | grep -E "ERROR|error:|FAILED|Caused|Exception|warning:|at com.android|SDK" | head -40
-
-      - name: Full build log on failure
-        if: failure()
-        run: gradle assembleDebug 2>&1 | tail -80
-
-      - name: Show APK
-        if: always()
-        run: find . -name "*.apk" 2>/dev/null || echo "No APK"
+      - name: Build Debug APK (full output)
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         if: success()
