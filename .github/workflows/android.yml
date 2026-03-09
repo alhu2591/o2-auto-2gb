@@ -29,8 +29,15 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build Debug APK (full output)
-        run: gradle assembleDebug --stacktrace
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Build Debug APK
+        run: gradle assembleDebug --stacktrace 2>&1 | head -100
+
+      - name: Show APK
+        if: always()
+        run: find . -name "*.apk" 2>/dev/null || echo "No APK"
 
       - name: Upload APK
         if: success()
