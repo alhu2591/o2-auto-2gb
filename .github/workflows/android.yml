@@ -19,23 +19,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Download gradle-wrapper.jar
-        run: |
-          mkdir -p gradle/wrapper
-          # Use Gradle tooling to get the wrapper jar
-          gradle wrapper --gradle-version 8.9 --distribution-type bin
-          ls -lh gradle/wrapper/
-
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - name: Show outputs
         if: always()
