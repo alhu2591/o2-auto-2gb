@@ -1,7 +1,6 @@
 package com.o2.auto2gb
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -27,21 +26,24 @@ class MainActivity : AppCompatActivity() {
         private const val REPLY_MSG = "Weiter"
     }
 
-    private val requiredPermissions: List<String> get() = buildList {
-        add(Manifest.permission.RECEIVE_SMS)
-        add(Manifest.permission.READ_SMS)
-        add(Manifest.permission.SEND_SMS)
+    private val allPerms: Array<String> get() {
+        val list = mutableListOf(
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.SEND_SMS
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(Manifest.permission.POST_NOTIFICATIONS)
+            list += Manifest.permission.POST_NOTIFICATIONS
         }
+        return list.toTypedArray()
     }
 
     private val permLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
+        // Just update UI - DO NOT start service here (would crash on Android 12+)
         updateUI()
         if (allGranted()) {
-            startSmsService()
             snack(getString(R.string.snack_all_granted))
         } else {
             snack(getString(R.string.snack_need_perms))
@@ -54,27 +56,35 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.btnGrantPermissions.setOnClickListener {
-            permLauncher.launch(requiredPermissions.filter { !isGranted(it) }.toTypedArray())
+            val missing = allPerms.filter { !isGranted(it) }.toTypedArray()
+            if (missing.isNotEmpty()) permLauncher.launch(missing)
         }
 
         binding.btnTestSms.setOnClickListener {
             if (!isGranted(Manifest.permission.SEND_SMS)) {
-                snack(getString(R.string.snack_need_send_perm)); return@setOnClickListener
+                snack(getString(R.string.snack_need_send_perm))
+                return@setOnClickListener
             }
-            sendSms(TARGET_PHONE, REPLY_MSG)
+            val data = Data.Builder()
+                .putString("phoneNumber", TARGET_PHONE)
+                .putString("message", REPLY_MSG)
+                .build()
+            WorkManager.getInstance(this)
+                .enqueue(OneTimeWorkRequestBuilder<SmsReplyWorker>().setInputData(data).build())
             snack(getString(R.string.snack_test_sent))
         }
 
         binding.btnStartService.setOnClickListener {
             if (!allGranted()) {
-                snack(getString(R.string.snack_grant_first)); return@setOnClickListener
+                snack(getString(R.string.snack_grant_first))
+                return@setOnClickListener
             }
-            startSmsService()
+            // Safe: called from foreground (user tap)
+            startServiceSafe()
             snack(getString(R.string.snack_service_started))
         }
 
         updateUI()
-        if (allGranted()) startSmsService()
     }
 
     override fun onResume() {
@@ -83,10 +93,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUI() {
-        val smsOk  = isGranted(Manifest.permission.RECEIVE_SMS) && isGranted(Manifest.permission.READ_SMS)
-        val sendOk = isGranted(Manifest.permission.SEND_SMS)
+        val smsOk   = isGranted(Manifest.permission.RECEIVE_SMS) && isGranted(Manifest.permission.READ_SMS)
+        val sendOk  = isGranted(Manifest.permission.SEND_SMS)
         val notifOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            isGranted(Manifest.permission.POST_NOTIFICATIONS) else true
+                          isGranted(Manifest.permission.POST_NOTIFICATIONS)
+                      else true
 
         setRow(binding.tvPermSms,   binding.icPermSms,   smsOk)
         setRow(binding.tvPermSend,  binding.icPermSend,  sendOk)
@@ -112,21 +123,21 @@ class MainActivity : AppCompatActivity() {
         iv.setImageResource(if (ok) R.drawable.ic_check_circle else R.drawable.ic_error_circle)
     }
 
-    private fun allGranted() = requiredPermissions.all { isGranted(it) }
-    private fun isGranted(p: String) = ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
+    private fun allGranted() = allPerms.all { isGranted(it) }
+    private fun isGranted(p: String) =
+        ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
 
-    private fun startSmsService() {
+    private fun startServiceSafe() {
         try {
-            val i = Intent(this, SmsService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i)
-            else startService(i)
-        } catch (e: Exception) { /* ignore if already running */ }
-    }
-
-    private fun sendSms(phone: String, msg: String) {
-        val d = Data.Builder().putString("phoneNumber", phone).putString("message", msg).build()
-        WorkManager.getInstance(this)
-            .enqueue(OneTimeWorkRequestBuilder<SmsReplyWorker>().setInputData(d).build())
+            val intent = Intent(this, SmsService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        } catch (e: Exception) {
+            // Service already running or not available
+        }
     }
 
     private fun snack(msg: String) {

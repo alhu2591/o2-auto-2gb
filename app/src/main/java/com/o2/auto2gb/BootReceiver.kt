@@ -8,17 +8,21 @@ import androidx.work.WorkManager
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action ?: return
-        if (action == Intent.ACTION_BOOT_COMPLETED ||
-            action == "android.intent.action.QUICKBOOT_POWERON" ||
-            action == "com.htc.intent.action.QUICKBOOT_POWERON"
-        ) {
-            WorkManager.getInstance(context)
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
+            intent.action != "android.intent.action.QUICKBOOT_POWERON" &&
+            intent.action != "com.htc.intent.action.QUICKBOOT_POWERON") return
+
+        // Initialize WorkManager for any pending tasks
+        try { WorkManager.getInstance(context) } catch (_: Exception) {}
+
+        // Restart service on boot (safe - system broadcast = foreground context)
+        try {
             val svc = Intent(context, SmsService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(svc)
-            else
+            } else {
                 context.startService(svc)
-        }
+            }
+        } catch (_: Exception) {}
     }
 }

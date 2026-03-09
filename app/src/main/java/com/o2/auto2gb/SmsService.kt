@@ -17,31 +17,36 @@ class SmsService : Service() {
         const val NOTIF_ID = 101
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        // Create channel in onCreate (safe, always before startForeground)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val mgr = getSystemService(NotificationManager::class.java)
+            if (mgr?.getNotificationChannel(CHANNEL_ID) == null) {
+                val ch = NotificationChannel(
+                    CHANNEL_ID,
+                    getString(R.string.channel_name),
+                    NotificationManager.IMPORTANCE_MIN
+                ).apply {
+                    description = getString(R.string.channel_desc)
+                    setShowBadge(false)
+                    enableLights(false)
+                    enableVibration(false)
+                    setSound(null, null)
+                    lockscreenVisibility = Notification.VISIBILITY_SECRET
+                }
+                mgr.createNotificationChannel(ch)
+            }
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        createChannel()
+        // Call startForeground IMMEDIATELY - within 5 seconds required
         startForeground(NOTIF_ID, buildNotification())
         return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.channel_name),
-                NotificationManager.IMPORTANCE_MIN
-            ).apply {
-                description = getString(R.string.channel_desc)
-                setShowBadge(false)
-                enableLights(false)
-                enableVibration(false)
-                setSound(null, null)
-                lockscreenVisibility = Notification.VISIBILITY_SECRET
-            }
-            getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
-        }
-    }
 
     private fun buildNotification(): Notification {
         val pi = PendingIntent.getActivity(
