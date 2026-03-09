@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">O2 Auto 2GB</string>
+    <string name="status_label">Servis Durumu</string>
+    <string name="status_active">Servis aktif — O2 SMS\'leri izliyor</string>
+    <string name="status_inactive">İzinler gerekli</string>
+    <string name="permissions_label">İzinler</string>
+    <string name="perm_receive_sms">SMS alma</string>
+    <string name="perm_send_sms">SMS gönderme</string>
+    <string name="perm_notifications">Bildirimler</string>
+    <string name="btn_grant">İzin Ver</string>
+    <string name="btn_test">Test SMS Gönder</string>
+    <string name="btn_start">Servisi Başlat</string>
+    <string name="monitored_number">İzlenen numara</string>
+    <string name="reply_message">Yanıt mesajı</string>
+    <string name="how_it_works_title">Nasıl çalışır?</string>
+    <string name="how_it_works_body">O2 »Weiter« içeren SMS gönderir → Uygulama otomatik yanıt verir → 2GB paketiniz yenilenir ✓</string>
+    <string name="snack_all_granted">✓ Tüm izinler verildi — Servis çalışıyor!</string>
+    <string name="snack_need_perms">Lütfen tüm izinleri verin</string>
+    <string name="snack_test_sent">📤 +4980112\'ye test SMS gönderiliyor…</string>
+    <string name="snack_need_send_perm">⚠ Lütfen önce SMS iznini verin</string>
+    <string name="snack_service_started">▶ Servis başlatıldı</string>
+    <string name="snack_grant_first">⚠ Önce tüm izinleri verin</string>
+    <string name="channel_name">O2 Auto 2GB</string>
+    <string name="channel_desc">Otomatik SMS yanıtı için arka plan servisi</string>
+    <string name="notif_content">O2 SMS\'leri izliyor</string>
+    <string name="service_running">Servis çalışıyor</string>
+    <string name="tagline">Otomatik 2GB paket yenileme</string>
+</resources>

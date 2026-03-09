@@ -13,16 +13,12 @@ import androidx.core.app.NotificationCompat
 class SmsService : Service() {
 
     companion object {
-        private const val CHANNEL_ID = "o2_service"
-        private const val NOTIF_ID = 1
-    }
-
-    override fun onCreate() {
-        super.onCreate()
-        createChannel()
+        const val CHANNEL_ID = "o2_bg"
+        const val NOTIF_ID = 101
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        createChannel()
         startForeground(NOTIF_ID, buildNotification())
         return START_STICKY
     }
@@ -36,7 +32,7 @@ class SmsService : Service() {
                 getString(R.string.channel_name),
                 NotificationManager.IMPORTANCE_MIN
             ).apply {
-                description = getString(R.string.channel_description)
+                description = getString(R.string.channel_desc)
                 setShowBadge(false)
                 enableLights(false)
                 enableVibration(false)
@@ -54,9 +50,9 @@ class SmsService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
-            .setContentTitle("O2 Auto 2GB")
-            .setContentText("Überwacht SMS von O2")
+            .setSmallIcon(android.R.drawable.stat_sys_upload_done)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.notif_content))
             .setContentIntent(pi)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setVisibility(NotificationCompat.VISIBILITY_SECRET)

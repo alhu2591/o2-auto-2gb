@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="44dp"
+    android:viewportWidth="44"
+    android:viewportHeight="44">
+    <!-- WiFi arcs -->
+    <path android:fillColor="#00000000"
+        android:strokeColor="#4FC3F7"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M22,28 A10,10 0 0 1 32,18"/>
+    <path android:fillColor="#00000000"
+        android:strokeColor="#4FC3F7"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M22,28 A10,10 0 0 0 12,18"/>
+    <path android:fillColor="#00000000"
+        android:strokeColor="#80CBC4"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M22,28 A16,16 0 0 1 38,12"/>
+    <path android:fillColor="#00000000"
+        android:strokeColor="#80CBC4"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M22,28 A16,16 0 0 0 6,12"/>
+    <!-- Center dot -->
+    <circle android:fillColor="#4FC3F7" android:cx="22" android:cy="28" android:r="2.5"/>
+    <!-- Refresh arrow below -->
+    <path android:fillColor="#00000000"
+        android:strokeColor="#69F0AE"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M15,35 A7,7 0 1 1 29,35"/>
+    <path android:fillColor="#69F0AE"
+        android:pathData="M29,32 L29,38 L33,35 Z"/>
+</vector>

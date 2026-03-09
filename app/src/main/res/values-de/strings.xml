@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">O2 Auto 2GB</string>
+    <string name="status_label">Service Status</string>
+    <string name="status_active">Service aktiv — überwacht O2 SMS</string>
+    <string name="status_inactive">Berechtigungen erforderlich</string>
+    <string name="permissions_label">Berechtigungen</string>
+    <string name="perm_receive_sms">SMS empfangen</string>
+    <string name="perm_send_sms">SMS senden</string>
+    <string name="perm_notifications">Benachrichtigungen</string>
+    <string name="btn_grant">Berechtigungen erteilen</string>
+    <string name="btn_test">Test-SMS senden</string>
+    <string name="btn_start">Service starten</string>
+    <string name="monitored_number">Überwachte Nummer</string>
+    <string name="reply_message">Antwort-Nachricht</string>
+    <string name="how_it_works_title">Wie funktioniert es?</string>
+    <string name="how_it_works_body">O2 sendet eine SMS mit »Weiter« → Diese App antwortet automatisch → Dein 2GB Paket wird verlängert ✓</string>
+    <string name="snack_all_granted">✓ Alle Berechtigungen erteilt — Service läuft!</string>
+    <string name="snack_need_perms">Bitte alle Berechtigungen erteilen</string>
+    <string name="snack_test_sent">📤 Test-SMS wird gesendet an +4980112…</string>
+    <string name="snack_need_send_perm">⚠ Bitte zuerst SMS-Berechtigung erteilen</string>
+    <string name="snack_service_started">▶ Service gestartet</string>
+    <string name="snack_grant_first">⚠ Zuerst alle Berechtigungen erteilen</string>
+    <string name="channel_name">O2 Auto 2GB</string>
+    <string name="channel_desc">Hintergrundservice für automatische SMS-Antwort</string>
+    <string name="notif_content">Überwacht O2 SMS</string>
+    <string name="service_running">Service läuft</string>
+    <string name="tagline">Automatische 2GB-Paketverlängerung</string>
+</resources>

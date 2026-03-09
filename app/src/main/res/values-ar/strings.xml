@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">O2 Auto 2GB</string>
+    <string name="status_label">حالة الخدمة</string>
+    <string name="status_active">الخدمة نشطة — تراقب رسائل O2</string>
+    <string name="status_inactive">يلزم منح الأذونات</string>
+    <string name="permissions_label">الأذونات</string>
+    <string name="perm_receive_sms">استقبال الرسائل</string>
+    <string name="perm_send_sms">إرسال الرسائل</string>
+    <string name="perm_notifications">الإشعارات</string>
+    <string name="btn_grant">منح الأذونات</string>
+    <string name="btn_test">إرسال رسالة تجريبية</string>
+    <string name="btn_start">تشغيل الخدمة</string>
+    <string name="monitored_number">الرقم المراقب</string>
+    <string name="reply_message">الرسالة التلقائية</string>
+    <string name="how_it_works_title">كيف يعمل التطبيق؟</string>
+    <string name="how_it_works_body">يرسل O2 رسالة تحتوي على »Weiter« ← يرد التطبيق تلقائياً ← يتم تجديد باقة 2GB ✓</string>
+    <string name="snack_all_granted">✓ تم منح جميع الأذونات — الخدمة تعمل!</string>
+    <string name="snack_need_perms">يرجى منح جميع الأذونات</string>
+    <string name="snack_test_sent">📤 جاري إرسال رسالة تجريبية إلى +4980112…</string>
+    <string name="snack_need_send_perm">⚠ يرجى منح إذن إرسال الرسائل أولاً</string>
+    <string name="snack_service_started">▶ تم تشغيل الخدمة</string>
+    <string name="snack_grant_first">⚠ امنح جميع الأذونات أولاً</string>
+    <string name="channel_name">O2 Auto 2GB</string>
+    <string name="channel_desc">خدمة خلفية للرد التلقائي على الرسائل</string>
+    <string name="notif_content">تراقب رسائل O2</string>
+    <string name="service_running">الخدمة تعمل</string>
+    <string name="tagline">تجديد تلقائي لباقة 2GB</string>
+</resources>
