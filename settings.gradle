@@ -1,0 +1,2 @@
+rootProject.name = "O2 Auto 2GB"
+include ':app'
