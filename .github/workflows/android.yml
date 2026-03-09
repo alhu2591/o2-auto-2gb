@@ -33,11 +33,19 @@ jobs:
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace 2>&1 | head -100
+        run: gradle assembleDebug --stacktrace 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
 
-      - name: Show APK
-        if: always()
-        run: find . -name "*.apk" 2>/dev/null || echo "No APK"
+      - name: Print error if failed
+        if: failure()
+        run: |
+          echo "=== FIRST 60 LINES ==="
+          head -60 /tmp/build.log
+          echo "=== LAST 60 LINES ==="
+          tail -60 /tmp/build.log
+
+      - name: Show APK path
+        if: success()
+        run: find . -name "*.apk"
 
       - name: Upload APK
         if: success()
