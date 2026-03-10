@@ -43,7 +43,8 @@
                 app:chipBackgroundColor="@color/success_container"
                 app:chipStrokeWidth="0dp"
                 android:clickable="false"
-                android:focusable="false" />
+                android:focusable="false"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- Incoming message -->

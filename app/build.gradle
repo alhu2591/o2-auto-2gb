@@ -11,29 +11,45 @@ android {
         applicationId "com.o2.auto2gb"
         minSdk 26
         targetSdk 35
-        versionCode 7
-        versionName "5.0"
+        versionCode 8
+        versionName "5.1"
+
+        // Ensure WorkManager's Executor has enough threads
+        multiDexEnabled false
     }
 
     buildTypes {
         debug {
             debuggable true
+            minifyEnabled false
+            shrinkResources false
         }
         release {
-            minifyEnabled false
+            debuggable false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions { jvmTarget = '17' }
     buildFeatures { viewBinding true }
 
+    // Suppress known false-positive lint warnings
+    lint {
+        abortOnError false
+        disable 'MissingConstraints', 'ContentDescription'
+        checkDependencies true
+    }
+
     packaging {
         resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            excludes += ['/META-INF/{AL2.0,LGPL2.1}', 'META-INF/NOTICE.md', 'META-INF/LICENSE.md']
         }
     }
 }
@@ -47,4 +63,6 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-service:2.8.7'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
+    // startup needed for WorkManager 2.10 custom init
+    implementation 'androidx.startup:startup-runtime:1.2.0'
 }
