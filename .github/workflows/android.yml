@@ -35,11 +35,26 @@ jobs:
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $RUNNER_TEMP/o2auto2gb.jks
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/o2auto2gb.jks" >> $GITHUB_ENV
+
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
 
-      - name: Build Release APK (unsigned)
+      - name: Build Release APK (signed)
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASS }}
         run: gradle assembleRelease --stacktrace 2>&1 | tee -a /tmp/build.log; exit ${PIPESTATUS[0]}
+
+      - name: Verify APK signature
+        if: success()
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$APK" 2>&1 | head -5
 
       - name: Print error if failed
         if: failure()
@@ -62,9 +77,9 @@ jobs:
           name: O2-Auto-2GB-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Upload Release APK (unsigned)
+      - name: Upload Release APK (signed)
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: O2-Auto-2GB-release
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: O2-Auto-2GB-release-signed
+          path: app/build/outputs/apk/release/app-release.apk

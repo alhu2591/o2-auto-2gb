@@ -11,9 +11,19 @@ android {
         applicationId "com.o2.auto2gb"
         minSdk 26
         targetSdk 35
-        versionCode 9
-        versionName "6.0"
+        versionCode 11
+        versionName "7.0"
         multiDexEnabled false
+    }
+
+    signingConfigs {
+        release {
+            def ksFile = System.getenv("KEYSTORE_PATH")
+            storeFile     ksFile ? file(ksFile) : null
+            storePassword System.getenv("KEYSTORE_PASS") ?: ""
+            keyAlias      System.getenv("KEY_ALIAS")     ?: ""
+            keyPassword   System.getenv("KEY_PASS")      ?: ""
+        }
     }
 
     buildTypes {
@@ -27,6 +37,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 
