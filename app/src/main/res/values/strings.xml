@@ -1,73 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">O2 Auto 2GB</string>
-    <string name="tagline">SMS Auto-Reply</string>
+    <string name="tagline">SMS Auto-Reply · O2 Germany</string>
 
     <!-- Onboarding -->
-    <string name="onb_step1_title">Permissions Required</string>
-    <string name="onb_step1_sub">الصلاحيات المطلوبة</string>
-    <string name="onb_step1_desc">To automatically reply to &lt;font color="#2196F3"&gt;&lt;b&gt;\'weiter\'&lt;/b&gt;&lt;/font&gt; messages, we need access to your SMS. This allows the app to detect incoming triggers and send your pre-configured responses instantly.</string>
+    <string name="onb_step1_title">SMS Access</string>
+    <string name="onb_step1_sub">الوصول إلى الرسائل</string>
+    <string name="onb_step1_desc">To automatically detect and reply to incoming SMS from O2 Germany, the app needs permission to &lt;font color="#2196F3"&gt;&lt;b&gt;read incoming messages&lt;/b&gt;&lt;/font&gt;. No data ever leaves your device.</string>
     <string name="onb_step2_title">Send SMS Access</string>
     <string name="onb_step2_sub">إذن إرسال الرسائل</string>
-    <string name="onb_step2_desc">Allow the app to send SMS replies automatically when a matching message is received from O2 Germany.</string>
+    <string name="onb_step2_desc">The app needs permission to &lt;font color="#2196F3"&gt;&lt;b&gt;send SMS replies&lt;/b&gt;&lt;/font&gt; automatically when a matching message is received from O2 Germany (80112 / +4980112).</string>
     <string name="onb_step3_title">Notifications</string>
     <string name="onb_step3_sub">الإشعارات</string>
-    <string name="onb_step3_desc">Allow notifications so the app can run in the background and inform you when an automatic reply has been sent.</string>
+    <string name="onb_step3_desc">Allow notifications so the service can &lt;font color="#2196F3"&gt;&lt;b&gt;run persistently&lt;/b&gt;&lt;/font&gt; in the background and confirm when an automatic reply has been sent.</string>
     <string name="privacy_first">Privacy First</string>
     <string name="privacy_desc">Your messages never leave your device.</string>
-    <string name="instant_reply">Instant Reply</string>
+    <string name="instant_reply">Always On</string>
     <string name="instant_desc">Works in the background even when closed.</string>
     <string name="btn_grant">Grant Permission</string>
     <string name="btn_next">Next</string>
     <string name="btn_finish">Get Started</string>
-    <string name="step_of">Step %1$d of %2$d: %3$s</string>
-    <string name="step_sms">SMS Access</string>
-    <string name="step_send">Send Access</string>
+    <string name="step_of">Step %1$d of %2$d — %3$s</string>
+    <string name="step_sms">Read SMS</string>
+    <string name="step_send">Send SMS</string>
     <string name="step_notif">Notifications</string>
 
-    <!-- Main -->
+    <!-- Service Card -->
     <string name="auto_reply_service">Auto-Reply Service</string>
-    <string name="service_desc">Respond to incoming messages automatically</string>
+    <string name="service_desc">Automatically replies to O2 renewal messages</string>
     <string name="service_active">Service Active</string>
-    <string name="service_active_receiver_only">Active (SMS only)</string>
+    <string name="service_active_receiver_only">Active — SMS Mode</string>
     <string name="service_inactive">Service Inactive</string>
-    <string name="active_rules">Active Rules</string>
-    <string name="add_rule">+ Add Rule</string>
-    <string name="keyword_match">Keyword Match</string>
-    <string name="if_contains">If message contains:</string>
-    <string name="reply_with">Reply with:</string>
-    <string name="rules_order">Rules are processed in order from top to bottom.</string>
-    <string name="nav_home">Home</string>
-    <string name="nav_test">Test</string>
-    <string name="nav_settings">Settings</string>
+    <string name="mode_full">Full Service</string>
+    <string name="mode_sms_only">SMS Only</string>
 
-    <!-- Test -->
-    <string name="test_title">Test Auto-Reply</string>
+    <!-- Stats Card -->
+    <string name="stats_title">Statistics</string>
+    <string name="stat_total_replies">Total Replies Sent</string>
+    <string name="stat_last_reply">Last Automatic Reply</string>
+    <string name="stat_never">Never</string>
+    <string name="stat_battery">Battery Optimization</string>
+    <string name="stat_battery_ok">Exempted ✓</string>
+    <string name="stat_battery_warn">Not Exempted</string>
+    <string name="stat_battery_warn_tap">Tap to fix →</string>
+
+    <!-- Simulation -->
     <string name="simulation">Simulation</string>
-    <string name="incoming_trigger">Incoming Message Trigger</string>
-    <string name="rule_matches">Auto-reply rule is active and matches this trigger.</string>
-    <string name="no_match">No rule matches this trigger.</string>
+    <string name="simulation_desc">Test a message to see if it would trigger an auto-reply</string>
+    <string name="incoming_trigger">Simulate incoming message</string>
+    <string name="rule_matches">✓ Match — auto-reply will be sent</string>
+    <string name="no_match">No match for this message</string>
     <string name="test_now">Test Now</string>
-    <string name="sim_log">Simulation Log</string>
-    <string name="clear_logs">Clear Logs</string>
-    <string name="incoming">INCOMING</string>
-    <string name="outgoing_auto">OUTGOING (AUTO-REPLY)</string>
-    <string name="just_now">JUST NOW</string>
+    <string name="sim_log">Activity Log</string>
+    <string name="clear_logs">Clear</string>
+    <string name="just_now">Just now</string>
+    <string name="end_of_log">No activity recorded yet</string>
+    <string name="toast_no_input">Enter a message to test</string>
+    <string name="toast_no_match">No match — auto-reply would NOT be sent</string>
+    <string name="toast_sent">✓ Sent &quot;Weiter&quot; to +4980112</string>
+    <string name="toast_simulated">Simulated — grant SEND_SMS to send real replies</string>
+
+    <!-- Notification channels -->
+    <string name="channel_service_name">Background Service</string>
+    <string name="channel_service_desc">Keeps the app running to monitor SMS</string>
+    <string name="channel_events_name">Auto-Reply Events</string>
+    <string name="channel_events_desc">Notifies when an automatic reply is sent</string>
+    <string name="notif_service_title">O2 Auto 2GB — Active</string>
+    <string name="notif_service_text">Monitoring SMS. Will reply \"Weiter\" to +4980112</string>
+    <string name="notif_stop">Stop</string>
+    <string name="notif_reply_title">✓ Auto-reply sent</string>
     <string name="success_label">SUCCESS</string>
-    <string name="end_of_log">End of simulation history</string>
-
-    <!-- Settings -->
-    <string name="settings_title">Settings</string>
-    <string name="language">Language</string>
-    <string name="monitored_number">Monitored Number</string>
-    <string name="reply_message">Reply Message</string>
-    <string name="trigger_keyword">Trigger Keyword</string>
-    <string name="about">About</string>
-    <string name="version">Version</string>
-
-    <!-- Service -->
-    <string name="channel_name">O2 Auto 2GB</string>
-    <string name="channel_desc">Background service for automatic SMS reply</string>
-    <string name="notif_content">Monitoring O2 SMS for auto-reply</string>
-    <string name="total_replies">Total replies</string>
 </resources>
