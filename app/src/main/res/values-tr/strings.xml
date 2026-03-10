@@ -25,6 +25,7 @@
     <string name="auto_reply_service">Otomatik Yanıt Servisi</string>
     <string name="service_desc">Gelen mesajlara otomatik yanıt ver</string>
     <string name="service_active">Servis Aktif</string>
+    <string name="service_active_receiver_only">Aktif (SMS alımı)</string>
     <string name="service_inactive">Servis Pasif</string>
     <string name="active_rules">Aktif Kurallar</string>
     <string name="add_rule">+ Kural Ekle</string>

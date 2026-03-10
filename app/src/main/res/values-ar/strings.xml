@@ -25,6 +25,7 @@
     <string name="auto_reply_service">خدمة الرد التلقائي</string>
     <string name="service_desc">الرد التلقائي على الرسائل الواردة</string>
     <string name="service_active">الخدمة نشطة</string>
+    <string name="service_active_receiver_only">نشط (استقبال فقط)</string>
     <string name="service_inactive">الخدمة متوقفة</string>
     <string name="active_rules">القواعد النشطة</string>
     <string name="add_rule">+ إضافة قاعدة</string>

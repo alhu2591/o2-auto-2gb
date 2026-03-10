@@ -36,7 +36,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(b.root)
         setupServiceSwitch()
         setupTest()
-        // Prompt battery optimization exemption once
         promptBatteryOptimization()
     }
 
@@ -51,24 +50,28 @@ class MainActivity : AppCompatActivity() {
         b.switchService.setOnCheckedChangeListener { _, checked ->
             if (!listenerEnabled) return@setOnCheckedChangeListener
             if (checked) {
-                if (!hasPermissions()) {
+                if (!hasSmsPermissions()) {
                     setSwitch(false)
                     Toast.makeText(this, "Grant SMS permissions first", Toast.LENGTH_LONG).show()
                     return@setOnCheckedChangeListener
                 }
-                val ok = startServiceSafe()
-                if (!ok) setSwitch(false) else updateStatus(true)
+                // Enable regardless of notification permission —
+                // SmsReceiver works even without Foreground Service
+                AppPrefs.setServiceEnabled(this, true)
+                // Try to start service (will skip gracefully if notifications blocked)
+                tryStartService()
+                updateStatus()
             } else {
-                stopServiceSafe()
-                updateStatus(false)
+                stopEverything()
+                updateStatus()
             }
         }
     }
 
     private fun syncSwitch() {
-        val running = isServiceRunning()
-        setSwitch(running)
-        updateStatus(running)
+        val enabled = AppPrefs.isServiceEnabled(this)
+        setSwitch(enabled)
+        updateStatus()
     }
 
     private fun setSwitch(on: Boolean) {
@@ -77,17 +80,47 @@ class MainActivity : AppCompatActivity() {
         listenerEnabled = true
     }
 
-    private fun updateStatus(active: Boolean) {
-        if (active) {
-            b.tvStatus.text = getString(R.string.service_active)
-            b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
-            b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
-            b.statusDot.setBackgroundResource(R.drawable.dot_status)
-        } else {
+    /**
+     * Status reflects three states:
+     * 1. Disabled — nothing running
+     * 2. Receiver-only — no notification permission, SmsReceiver active
+     * 3. Full service — foreground service + SmsReceiver active
+     */
+    private fun updateStatus() {
+        val enabled = AppPrefs.isServiceEnabled(this)
+        if (!enabled) {
             b.tvStatus.text = getString(R.string.service_inactive)
             b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_surface_variant))
             b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.surface_variant))
             b.statusDot.setBackgroundColor(ContextCompat.getColor(this, R.color.on_surface_variant))
+            return
+        }
+
+        val hasNotifPerm = SmsService.hasNotificationPermission(this)
+        val serviceRunning = isServiceRunning()
+
+        when {
+            serviceRunning -> {
+                // Full mode: foreground service active
+                b.tvStatus.text = getString(R.string.service_active)
+                b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
+                b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
+                b.statusDot.setBackgroundResource(R.drawable.dot_status)
+            }
+            !hasNotifPerm -> {
+                // Receiver-only mode: works fine, just no persistent notification
+                b.tvStatus.text = getString(R.string.service_active_receiver_only)
+                b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
+                b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
+                b.statusDot.setBackgroundResource(R.drawable.dot_status)
+            }
+            else -> {
+                // Should be running but isn't yet (just toggled)
+                b.tvStatus.text = getString(R.string.service_active)
+                b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
+                b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
+                b.statusDot.setBackgroundResource(R.drawable.dot_status)
+            }
         }
     }
 
@@ -96,18 +129,13 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         val pm = getSystemService(PowerManager::class.java) ?: return
         if (pm.isIgnoringBatteryOptimizations(packageName)) return
-
-        // Only prompt once per install
         val prefs = getSharedPreferences("o2_ui", Context.MODE_PRIVATE)
         if (prefs.getBoolean("battery_prompted", false)) return
         prefs.edit().putBoolean("battery_prompted", true).apply()
-
-        // Open system dialog to request battery exemption
         try {
-            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            startActivity(Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                 data = Uri.parse("package:$packageName")
-            }
-            startActivity(intent)
+            })
         } catch (_: Exception) {}
     }
 
@@ -119,7 +147,6 @@ class MainActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
         })
-
         b.btnTestNow.setOnClickListener {
             val input = b.etTrigger.text?.toString()?.trim() ?: ""
             if (input.isEmpty()) {
@@ -135,10 +162,10 @@ class MainActivity : AppCompatActivity() {
             val sent = trySendSms(TARGET, REPLY)
             addLogEntry(input, if (sent) REPLY else null)
             Toast.makeText(this,
-                if (sent) "✓ Sent \"$REPLY\" to $TARGET" else "Simulated — grant SEND_SMS to send real SMS",
+                if (sent) "✓ Sent \"$REPLY\" to $TARGET"
+                else "Simulated — grant SEND_SMS permission to send real SMS",
                 Toast.LENGTH_LONG).show()
         }
-
         b.btnClearLogs.setOnClickListener {
             b.logContainer.removeAllViews()
             b.cardEmptyLog.visibility = View.VISIBLE
@@ -151,13 +178,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun trySendSms(phone: String, message: String): Boolean {
-        if (!hasPermissions()) return false
+        if (!hasSmsPermissions()) return false
         return try {
-            val mgr: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val mgr: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 getSystemService(SmsManager::class.java)
-            } else {
-                @Suppress("DEPRECATION") SmsManager.getDefault()
-            }
+            else @Suppress("DEPRECATION") SmsManager.getDefault()
             mgr.sendTextMessage(phone, null, message, null, null)
             true
         } catch (_: Exception) { false }
@@ -173,6 +198,7 @@ class MainActivity : AppCompatActivity() {
             row.chipSuccess.visibility = View.VISIBLE
         } else {
             row.tvOutgoing.text = "—"
+            row.chipSuccess.visibility = View.VISIBLE
             row.chipSuccess.text = "NO MATCH"
             row.chipSuccess.setTextColor(ContextCompat.getColor(this, R.color.warning))
             row.chipSuccess.setChipBackgroundColorResource(R.color.surface_variant)
@@ -181,7 +207,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    private fun hasPermissions(): Boolean =
+    private fun hasSmsPermissions(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
 
@@ -189,19 +215,17 @@ class MainActivity : AppCompatActivity() {
     private fun isServiceRunning(): Boolean = try {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         am.getRunningServices(50).any { it.service.className == SmsService::class.java.name }
-    } catch (_: Exception) { AppPrefs.isServiceEnabled(this) }
+    } catch (_: Exception) { false }
 
-    private fun startServiceSafe(): Boolean = try {
-        val i = Intent(this, SmsService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i)
-        else startService(i)
-        true
-    } catch (e: Exception) {
-        Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-        false
+    private fun tryStartService() {
+        try {
+            val i = Intent(this, SmsService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i)
+            else startService(i)
+        } catch (_: Exception) {}
     }
 
-    private fun stopServiceSafe() {
+    private fun stopEverything() {
         try {
             AppPrefs.setServiceEnabled(this, false)
             stopService(Intent(this, SmsService::class.java))

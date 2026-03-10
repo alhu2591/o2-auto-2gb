@@ -29,6 +29,7 @@
     <string name="auto_reply_service">Auto-Reply Service</string>
     <string name="service_desc">Respond to incoming messages automatically</string>
     <string name="service_active">Service Active</string>
+    <string name="service_active_receiver_only">Active (SMS only)</string>
     <string name="service_inactive">Service Inactive</string>
     <string name="active_rules">Active Rules</string>
     <string name="add_rule">+ Add Rule</string>
