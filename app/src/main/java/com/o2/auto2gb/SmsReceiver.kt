@@ -12,14 +12,27 @@ import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 /**
- * Triggered by Android system for every incoming SMS.
- * Works even if app process is completely dead — Android wakes it.
- * directBootAware=true → works before screen unlock after reboot.
+ * Triggered by Android for every incoming SMS — even when app is dead.
+ * directBootAware=true → fires before screen unlock after reboot.
  */
 class SmsReceiver : BroadcastReceiver() {
 
     companion object {
-        private val TARGET_SENDERS = setOf("+4980112", "80112", "4980112")
+        /**
+         * All known O2 Germany sender IDs.
+         * O2 sends from numeric short codes AND alphanumeric IDs
+         * depending on message type and carrier routing.
+         */
+        private val TARGET_SENDERS = setOf(
+            // Numeric (standard)
+            "80112", "+4980112", "4980112",
+            // Alphanumeric (O2 Germany)
+            "O2", "O2online", "O2Germany",
+            "o2", "o2online",
+            // Short codes used in some regions
+            "18081", "18082"
+        )
+
         private const val TRIGGER_WORD  = "weiter"
         private const val REPLY_MESSAGE = "Weiter"
     }
@@ -27,8 +40,7 @@ class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
-        // Short WakeLock — just long enough to enqueue WorkManager task
-        // WorkManager then handles sending on its own thread safely
+        // Short WakeLock — just enough to enqueue WorkManager job
         val wl = (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)
             ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "O2Auto2GB::RxLock")
             ?.also { it.acquire(10_000L) }
@@ -43,8 +55,12 @@ class SmsReceiver : BroadcastReceiver() {
                 val bodyMatch   = body.contains(TRIGGER_WORD, ignoreCase = true)
 
                 if (senderMatch && bodyMatch) {
-                    // Block other apps (e.g. default SMS app) from showing this message
+                    // Block other apps from showing this message
                     try { abortBroadcast() } catch (_: Exception) {}
+
+                    // Duplicate check — if we already replied in last 30s, skip
+                    if (!AppPrefs.shouldReplyTo(context, sender)) continue
+
                     enqueueReply(context, sender)
                 }
             }
@@ -68,7 +84,7 @@ class SmsReceiver : BroadcastReceiver() {
         try {
             WorkManager.getInstance(context).enqueue(request)
         } catch (_: Exception) {
-            // Last resort: send directly (risky on main thread but better than missing reply)
+            // Last resort fallback
             try { SmsReplyWorker.sendSms(phone, REPLY_MESSAGE, context) } catch (_: Exception) {}
         }
     }

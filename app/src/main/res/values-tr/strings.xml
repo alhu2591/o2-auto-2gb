@@ -59,4 +59,5 @@
     <string name="channel_name">O2 Auto 2GB</string>
     <string name="channel_desc">Otomatik SMS yanıtı için arka plan servisi</string>
     <string name="notif_content">O2 SMS\'lerini otomatik yanıt için izliyor</string>
+    <string name="total_replies">Toplam yanıt</string>
 </resources>

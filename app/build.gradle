@@ -11,10 +11,8 @@ android {
         applicationId "com.o2.auto2gb"
         minSdk 26
         targetSdk 35
-        versionCode 8
-        versionName "5.1"
-
-        // Ensure WorkManager's Executor has enough threads
+        versionCode 9
+        versionName "6.0"
         multiDexEnabled false
     }
 
@@ -36,11 +34,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
     kotlinOptions { jvmTarget = '17' }
     buildFeatures { viewBinding true }
 
-    // Suppress known false-positive lint warnings
     lint {
         abortOnError false
         disable 'MissingConstraints', 'ContentDescription'
@@ -59,10 +55,8 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.activity:activity-ktx:1.10.1'
-    implementation 'androidx.work:work-runtime-ktx:2.10.0'
+    implementation 'androidx.work:work-runtime-ktx:2.10.0'       // includes coroutines
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
-    implementation 'androidx.lifecycle:lifecycle-service:2.8.7'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
-    // startup needed for WorkManager 2.10 custom init
-    implementation 'androidx.startup:startup-runtime:1.2.0'
+    implementation 'androidx.startup:startup-runtime:1.2.0'       // WorkManager custom init
 }

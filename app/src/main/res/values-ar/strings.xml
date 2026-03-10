@@ -59,4 +59,5 @@
     <string name="channel_name">O2 Auto 2GB</string>
     <string name="channel_desc">خدمة خلفية للرد التلقائي على الرسائل</string>
     <string name="notif_content">تراقب رسائل O2 للرد التلقائي</string>
+    <string name="total_replies">إجمالي الردود</string>
 </resources>

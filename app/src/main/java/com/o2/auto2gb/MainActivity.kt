@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         syncSwitch()
+        refreshStats()
     }
 
     // ── Service Switch ────────────────────────────────────────────────────────
@@ -55,10 +56,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Grant SMS permissions first", Toast.LENGTH_LONG).show()
                     return@setOnCheckedChangeListener
                 }
-                // Enable regardless of notification permission —
-                // SmsReceiver works even without Foreground Service
                 AppPrefs.setServiceEnabled(this, true)
-                // Try to start service (will skip gracefully if notifications blocked)
                 tryStartService()
                 updateStatus()
             } else {
@@ -69,8 +67,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun syncSwitch() {
-        val enabled = AppPrefs.isServiceEnabled(this)
-        setSwitch(enabled)
+        setSwitch(AppPrefs.isServiceEnabled(this))
         updateStatus()
     }
 
@@ -80,12 +77,6 @@ class MainActivity : AppCompatActivity() {
         listenerEnabled = true
     }
 
-    /**
-     * Status reflects three states:
-     * 1. Disabled — nothing running
-     * 2. Receiver-only — no notification permission, SmsReceiver active
-     * 3. Full service — foreground service + SmsReceiver active
-     */
     private fun updateStatus() {
         val enabled = AppPrefs.isServiceEnabled(this)
         if (!enabled) {
@@ -95,33 +86,19 @@ class MainActivity : AppCompatActivity() {
             b.statusDot.setBackgroundColor(ContextCompat.getColor(this, R.color.on_surface_variant))
             return
         }
+        val statusText = if (!SmsService.hasNotificationPermission(this))
+            getString(R.string.service_active_receiver_only)
+        else
+            getString(R.string.service_active)
+        b.tvStatus.text = statusText
+        b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
+        b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
+        b.statusDot.setBackgroundResource(R.drawable.dot_status)
+    }
 
-        val hasNotifPerm = SmsService.hasNotificationPermission(this)
-        val serviceRunning = isServiceRunning()
-
-        when {
-            serviceRunning -> {
-                // Full mode: foreground service active
-                b.tvStatus.text = getString(R.string.service_active)
-                b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
-                b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
-                b.statusDot.setBackgroundResource(R.drawable.dot_status)
-            }
-            !hasNotifPerm -> {
-                // Receiver-only mode: works fine, just no persistent notification
-                b.tvStatus.text = getString(R.string.service_active_receiver_only)
-                b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
-                b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
-                b.statusDot.setBackgroundResource(R.drawable.dot_status)
-            }
-            else -> {
-                // Should be running but isn't yet (just toggled)
-                b.tvStatus.text = getString(R.string.service_active)
-                b.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.on_success))
-                b.cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.success_container))
-                b.statusDot.setBackgroundResource(R.drawable.dot_status)
-            }
-        }
+    private fun refreshStats() {
+        val count = AppPrefs.getTotalReplies(this)
+        b.chipTotalReplies.text = count.toString()
     }
 
     // ── Battery Optimization ──────────────────────────────────────────────────
@@ -194,12 +171,12 @@ class MainActivity : AppCompatActivity() {
         row.tvIncoming.text = incoming
         row.tvTime.text     = getString(R.string.just_now)
         if (outgoing != null) {
-            row.tvOutgoing.text = outgoing
+            row.tvOutgoing.text    = outgoing
             row.chipSuccess.visibility = View.VISIBLE
         } else {
-            row.tvOutgoing.text = "—"
+            row.tvOutgoing.text    = "—"
             row.chipSuccess.visibility = View.VISIBLE
-            row.chipSuccess.text = "NO MATCH"
+            row.chipSuccess.text   = "NO MATCH"
             row.chipSuccess.setTextColor(ContextCompat.getColor(this, R.color.warning))
             row.chipSuccess.setChipBackgroundColorResource(R.color.surface_variant)
         }
@@ -210,12 +187,6 @@ class MainActivity : AppCompatActivity() {
     private fun hasSmsPermissions(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
-
-    @Suppress("DEPRECATION")
-    private fun isServiceRunning(): Boolean = try {
-        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        am.getRunningServices(50).any { it.service.className == SmsService::class.java.name }
-    } catch (_: Exception) { false }
 
     private fun tryStartService() {
         try {

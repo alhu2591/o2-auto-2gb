@@ -59,4 +59,5 @@
     <string name="channel_name">O2 Auto 2GB</string>
     <string name="channel_desc">Hintergrundservice für automatische SMS-Antwort</string>
     <string name="notif_content">Überwacht O2 SMS für Auto-Antwort</string>
+    <string name="total_replies">Antworten gesamt</string>
 </resources>

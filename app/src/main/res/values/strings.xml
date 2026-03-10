@@ -69,4 +69,5 @@
     <string name="channel_name">O2 Auto 2GB</string>
     <string name="channel_desc">Background service for automatic SMS reply</string>
     <string name="notif_content">Monitoring O2 SMS for auto-reply</string>
+    <string name="total_replies">Total replies</string>
 </resources>

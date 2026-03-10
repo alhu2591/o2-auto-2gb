@@ -35,21 +35,33 @@ jobs:
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
 
+      - name: Build Release APK (unsigned)
+        run: gradle assembleRelease --stacktrace 2>&1 | tee -a /tmp/build.log; exit ${PIPESTATUS[0]}
+
       - name: Print error if failed
         if: failure()
         run: |
           echo "=== FIRST 60 LINES ==="
           head -60 /tmp/build.log
-          echo "=== LAST 60 LINES ==="
-          tail -60 /tmp/build.log
+          echo "=== LAST 80 LINES ==="
+          tail -80 /tmp/build.log
 
-      - name: Show APK path
+      - name: Show APK sizes
         if: success()
-        run: find . -name "*.apk"
+        run: |
+          echo "=== Built APKs ==="
+          find . -name "*.apk" -exec ls -lh {} \;
 
-      - name: Upload APK
+      - name: Upload Debug APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: O2-Auto-2GB
+          name: O2-Auto-2GB-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Release APK (unsigned)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: O2-Auto-2GB-release
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
