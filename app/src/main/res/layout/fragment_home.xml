@@ -241,7 +241,7 @@
                         <com.google.android.material.chip.Chip
                             android:layout_width="wrap_content"
                             android:layout_height="28dp"
-                            android:text="\"weiter\""
+                            android:text="&quot;weiter&quot;"
                             android:textSize="12sp"
                             android:textColor="@color/primary"
                             app:chipBackgroundColor="@color/chip_keyword"
@@ -271,7 +271,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="\"Weiter\""
+                            android:text="&quot;Weiter&quot;"
                             android:textSize="13sp"
                             android:textStyle="italic|bold"
                             android:textColor="@color/on_surface" />
