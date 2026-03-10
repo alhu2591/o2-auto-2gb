@@ -7,10 +7,10 @@ class App : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        AppPrefs.init(this)
+        // No AppPrefs.init() needed — AppPrefs now takes context directly
     }
 
-    // WorkManager custom config for reliability
+    // Provide WorkManager config — prevents double-init conflict with content provider
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setMinimumLoggingLevel(android.util.Log.ERROR)

@@ -5,8 +5,10 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.telephony.SmsManager
 import android.text.Editable
 import android.text.TextWatcher
@@ -32,9 +34,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
-
         setupServiceSwitch()
         setupTest()
+        // Prompt battery optimization exemption once
+        promptBatteryOptimization()
     }
 
     override fun onResume() {
@@ -45,7 +48,6 @@ class MainActivity : AppCompatActivity() {
     // ── Service Switch ────────────────────────────────────────────────────────
     private fun setupServiceSwitch() {
         syncSwitch()
-
         b.switchService.setOnCheckedChangeListener { _, checked ->
             if (!listenerEnabled) return@setOnCheckedChangeListener
             if (checked) {
@@ -89,11 +91,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ── Battery Optimization ──────────────────────────────────────────────────
+    private fun promptBatteryOptimization() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val pm = getSystemService(PowerManager::class.java) ?: return
+        if (pm.isIgnoringBatteryOptimizations(packageName)) return
+
+        // Only prompt once per install
+        val prefs = getSharedPreferences("o2_ui", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("battery_prompted", false)) return
+        prefs.edit().putBoolean("battery_prompted", true).apply()
+
+        // Open system dialog to request battery exemption
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
     // ── Test Section ──────────────────────────────────────────────────────────
     private fun setupTest() {
-        // Pre-fill with trigger word and show match indicator
         checkMatch(b.etTrigger.text?.toString() ?: "")
-
         b.etTrigger.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) { checkMatch(s?.toString() ?: "") }
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -106,23 +126,17 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Enter a trigger message", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
             val matches = input.contains(TRIGGER, ignoreCase = true)
             if (!matches) {
-                Toast.makeText(this, "No rule matches this trigger", Toast.LENGTH_SHORT).show()
                 addLogEntry(input, null)
+                Toast.makeText(this, "No rule matches this trigger", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
-            // Try to send real SMS
             val sent = trySendSms(TARGET, REPLY)
             addLogEntry(input, if (sent) REPLY else null)
-
-            if (sent) {
-                Toast.makeText(this, "✓ Reply sent to $TARGET", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "SMS permission missing — simulation only", Toast.LENGTH_LONG).show()
-            }
+            Toast.makeText(this,
+                if (sent) "✓ Sent \"$REPLY\" to $TARGET" else "Simulated — grant SEND_SMS to send real SMS",
+                Toast.LENGTH_LONG).show()
         }
 
         b.btnClearLogs.setOnClickListener {
@@ -132,8 +146,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkMatch(text: String) {
-        val matches = text.contains(TRIGGER, ignoreCase = true)
-        b.cardMatchIndicator.visibility = if (matches) View.VISIBLE else View.GONE
+        b.cardMatchIndicator.visibility =
+            if (text.contains(TRIGGER, ignoreCase = true)) View.VISIBLE else View.GONE
     }
 
     private fun trySendSms(phone: String, message: String): Boolean {
@@ -146,43 +160,36 @@ class MainActivity : AppCompatActivity() {
             }
             mgr.sendTextMessage(phone, null, message, null, null)
             true
-        } catch (e: Exception) {
-            false
-        }
+        } catch (_: Exception) { false }
     }
 
     private fun addLogEntry(incoming: String, outgoing: String?) {
         b.cardEmptyLog.visibility = View.GONE
-        val logB = ItemLogBinding.inflate(layoutInflater, b.logContainer, false)
-        logB.tvIncoming.text = incoming
-        logB.tvTime.text = getString(R.string.just_now)
-
+        val row = ItemLogBinding.inflate(layoutInflater, b.logContainer, false)
+        row.tvIncoming.text = incoming
+        row.tvTime.text     = getString(R.string.just_now)
         if (outgoing != null) {
-            logB.tvOutgoing.text = outgoing
-            logB.chipSuccess.visibility = View.VISIBLE
+            row.tvOutgoing.text = outgoing
+            row.chipSuccess.visibility = View.VISIBLE
         } else {
-            // No match — hide outgoing message bubble
-            logB.tvOutgoing.text = "—"
-            logB.chipSuccess.text = "NO MATCH"
-            logB.chipSuccess.setTextColor(ContextCompat.getColor(this, R.color.warning))
-            logB.chipSuccess.setChipBackgroundColorResource(R.color.surface_variant)
+            row.tvOutgoing.text = "—"
+            row.chipSuccess.text = "NO MATCH"
+            row.chipSuccess.setTextColor(ContextCompat.getColor(this, R.color.warning))
+            row.chipSuccess.setChipBackgroundColorResource(R.color.surface_variant)
         }
-
-        b.logContainer.addView(logB.root, 0)
+        b.logContainer.addView(row.root, 0)
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     private fun hasPermissions(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) ==
-                PackageManager.PERMISSION_GRANTED &&
-        ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) ==
-                PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
 
     @Suppress("DEPRECATION")
     private fun isServiceRunning(): Boolean = try {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         am.getRunningServices(50).any { it.service.className == SmsService::class.java.name }
-    } catch (_: Exception) { AppPrefs.isServiceEnabled }
+    } catch (_: Exception) { AppPrefs.isServiceEnabled(this) }
 
     private fun startServiceSafe(): Boolean = try {
         val i = Intent(this, SmsService::class.java)
@@ -196,7 +203,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopServiceSafe() {
         try {
-            AppPrefs.isServiceEnabled = false
+            AppPrefs.setServiceEnabled(this, false)
             stopService(Intent(this, SmsService::class.java))
             androidx.work.WorkManager.getInstance(this).cancelAllWorkByTag(SmsService.WATCHDOG_TAG)
         } catch (_: Exception) {}

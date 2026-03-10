@@ -6,16 +6,15 @@ import android.content.Intent
 import android.os.PowerManager
 import android.provider.Telephony
 import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.Data
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 /**
- * Works independently from SmsService.
- * Android wakes this receiver even if the app process is dead.
+ * Triggered by Android system for every incoming SMS.
+ * Works even if app process is completely dead — Android wakes it.
+ * directBootAware=true → works before screen unlock after reboot.
  */
 class SmsReceiver : BroadcastReceiver() {
 
@@ -28,26 +27,25 @@ class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
-        AppPrefs.init(context)
-
-        // Acquire brief wake lock so process doesn't sleep mid-execution
+        // Short WakeLock — just long enough to enqueue WorkManager task
+        // WorkManager then handles sending on its own thread safely
         val wl = (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)
-            ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "O2Auto2GB::ReceiverLock")
+            ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "O2Auto2GB::RxLock")
             ?.also { it.acquire(10_000L) }
 
         try {
             val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
-
             for (sms in messages) {
                 val sender = sms.displayOriginatingAddress ?: continue
-                val body   = sms.displayMessageBody ?: continue
+                val body   = sms.displayMessageBody       ?: continue
 
                 val senderMatch = TARGET_SENDERS.any { sender.contains(it, ignoreCase = true) }
                 val bodyMatch   = body.contains(TRIGGER_WORD, ignoreCase = true)
 
                 if (senderMatch && bodyMatch) {
+                    // Block other apps (e.g. default SMS app) from showing this message
                     try { abortBroadcast() } catch (_: Exception) {}
-                    enqueueReply(context, sender, REPLY_MESSAGE)
+                    enqueueReply(context, sender)
                 }
             }
         } finally {
@@ -55,24 +53,23 @@ class SmsReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun enqueueReply(context: Context, phone: String, message: String) {
+    private fun enqueueReply(context: Context, phone: String) {
         val data = Data.Builder()
             .putString("phoneNumber", phone)
-            .putString("message", message)
+            .putString("message", REPLY_MESSAGE)
             .build()
 
-        // No network constraint needed — SMS works without internet
         val request = OneTimeWorkRequestBuilder<SmsReplyWorker>()
             .setInputData(data)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
             .addTag("sms_reply")
             .build()
 
         try {
             WorkManager.getInstance(context).enqueue(request)
         } catch (_: Exception) {
-            // Fallback: send directly on receiver thread (risky but last resort)
-            SmsReplyWorker.sendSmsDirectly(phone, message, context)
+            // Last resort: send directly (risky on main thread but better than missing reply)
+            try { SmsReplyWorker.sendSms(phone, REPLY_MESSAGE, context) } catch (_: Exception) {}
         }
     }
 }

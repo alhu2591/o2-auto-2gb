@@ -7,16 +7,15 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 
 class SmsReplyWorker(
-    private val appContext: Context,
+    private val ctx: Context,
     params: WorkerParameters
-) : Worker(appContext, params) {
+) : Worker(ctx, params) {
 
     override fun doWork(): Result {
         val phone   = inputData.getString("phoneNumber") ?: return Result.failure()
         val message = inputData.getString("message")     ?: return Result.failure()
-
         return try {
-            sendSmsDirectly(phone, message, appContext)
+            sendSms(phone, message, ctx)
             Result.success()
         } catch (e: Exception) {
             if (runAttemptCount < 3) Result.retry() else Result.failure()
@@ -24,14 +23,13 @@ class SmsReplyWorker(
     }
 
     companion object {
-        fun sendSmsDirectly(phone: String, message: String, context: Context) {
-            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        fun sendSms(phone: String, message: String, context: Context) {
+            val mgr: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 context.getSystemService(SmsManager::class.java)
             } else {
-                @Suppress("DEPRECATION")
-                SmsManager.getDefault()
+                @Suppress("DEPRECATION") SmsManager.getDefault()
             }
-            smsManager.sendTextMessage(phone, null, message, null, null)
+            mgr.sendTextMessage(phone, null, message, null, null)
         }
     }
 }

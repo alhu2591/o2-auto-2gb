@@ -6,9 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -16,126 +16,118 @@ import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 /**
- * Foreground service — يبقى حياً حتى لو أغلق المستخدم التطبيق.
- * android:stopWithTask="false" في Manifest يمنع Android من إيقافه.
- * onTaskRemoved() يُعيد تشغيله لو أُغلق من Recent Apps.
+ * Foreground service:
+ * - stopWithTask=false  → stays alive when app swiped from Recents
+ * - onTaskRemoved()     → reschedules itself via AlarmManager if killed
+ * - START_STICKY        → Android auto-restarts it if killed by OOM
+ * - WorkManager watchdog → checks every 15min and restarts if needed
+ *
+ * NO persistent WakeLock here — foreground services keep CPU alive on their own.
+ * WakeLock is only used per-SMS in SmsReceiver (short & targeted = battery safe).
  */
 class SmsService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "o2_bg_v2"
-        const val NOTIF_ID   = 101
-        const val ACTION_STOP = "com.o2.auto2gb.ACTION_STOP"
+        const val CHANNEL_ID   = "o2_bg_v2"
+        const val NOTIF_ID     = 101
+        const val ACTION_STOP  = "com.o2.auto2gb.ACTION_STOP"
         const val WATCHDOG_TAG = "o2_watchdog"
     }
-
-    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        acquireWakeLock()
         scheduleWatchdog()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Handle stop action from notification
         if (intent?.action == ACTION_STOP) {
-            AppPrefs.isServiceEnabled = false
+            AppPrefs.setServiceEnabled(this, false)
+            cancelWatchdog()
             stopSelf()
             return START_NOT_STICKY
         }
 
-        // MUST be called within 5 seconds of onStartCommand
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIF_ID, buildNotification(),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            // API 34+ requires foregroundServiceType in startForeground()
+            // API 29-33: startForeground without type is fine
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {  // API 34
+                startForeground(
+                    NOTIF_ID,
+                    buildNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
             } else {
                 startForeground(NOTIF_ID, buildNotification())
             }
         } catch (e: Exception) {
-            AppPrefs.isServiceEnabled = false
+            AppPrefs.setServiceEnabled(this, false)
             stopSelf()
             return START_NOT_STICKY
         }
 
-        AppPrefs.isServiceEnabled = true
-        return START_STICKY  // Android restarts this service automatically if killed
+        AppPrefs.setServiceEnabled(this, true)
+        return START_STICKY
     }
 
+    // Called when user swipes app from Recents — but service has stopWithTask=false
+    // so this is called AFTER Android would normally kill the service.
+    // We schedule an alarm to restart ourselves ~3 seconds later.
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // Called when user swipes app from Recent Apps.
-        // Re-schedule our own restart if user still wants service.
         super.onTaskRemoved(rootIntent)
-        if (AppPrefs.isServiceEnabled) {
-            val restart = Intent(applicationContext, SmsService::class.java).also {
-                it.setPackage(packageName)
-            }
-            val pi = android.app.PendingIntent.getService(
-                applicationContext, 1, restart,
+        if (!AppPrefs.isServiceEnabled(this)) return
+
+        try {
+            val restart = Intent(applicationContext, SmsService::class.java)
+            val pi = PendingIntent.getService(
+                applicationContext, 42, restart,
                 PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
             )
             val alarm = getSystemService(ALARM_SERVICE) as android.app.AlarmManager
-            alarm.set(
+            // setAndAllowWhileIdle works in Doze mode, no extra permission needed
+            alarm.setAndAllowWhileIdle(
                 android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                android.os.SystemClock.elapsedRealtime() + 3000,
+                android.os.SystemClock.elapsedRealtime() + 3_000L,
                 pi
             )
-        }
+        } catch (_: Exception) {}
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        releaseWakeLock()
-        // If destroyed unexpectedly and user still wants it → restart via watchdog
+        // Don't update AppPrefs here — we only want to clear it on intentional stop (ACTION_STOP)
+        // so the watchdog / boot receiver can restart us if we were killed unexpectedly
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    // ── Wake lock: prevents CPU sleep during SMS processing ──────────────────
-    private fun acquireWakeLock() {
-        try {
-            val pm = getSystemService(POWER_SERVICE) as PowerManager
-            wakeLock = pm.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "O2Auto2GB::ServiceLock"
-            ).also {
-                it.setReferenceCounted(false)
-                // Only hold for 10s at a time — WakeLock is renewed on each SMS
-                it.acquire(10 * 1000L)
-            }
-        } catch (_: Exception) {}
-    }
-
-    private fun releaseWakeLock() {
-        try {
-            if (wakeLock?.isHeld == true) wakeLock?.release()
-        } catch (_: Exception) {}
-        wakeLock = null
-    }
-
-    // ── Watchdog: periodic WorkManager task restarts service if killed ───────
     private fun scheduleWatchdog() {
         try {
             val req = PeriodicWorkRequestBuilder<ServiceWatchdogWorker>(15, TimeUnit.MINUTES)
                 .addTag(WATCHDOG_TAG)
                 .build()
             WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-                WATCHDOG_TAG,
-                ExistingPeriodicWorkPolicy.KEEP,
-                req
+                WATCHDOG_TAG, ExistingPeriodicWorkPolicy.KEEP, req
             )
         } catch (_: Exception) {}
     }
 
-    // ── Notification ─────────────────────────────────────────────────────────
+    private fun cancelWatchdog() {
+        try {
+            WorkManager.getInstance(applicationContext).cancelAllWorkByTag(WATCHDOG_TAG)
+        } catch (_: Exception) {}
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val mgr = getSystemService(NotificationManager::class.java) ?: return
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
-            NotificationChannel(CHANNEL_ID, "O2 Auto 2GB", NotificationManager.IMPORTANCE_MIN).apply {
-                description      = "Background service for automatic SMS reply"
+            NotificationChannel(
+                CHANNEL_ID,
+                "O2 Auto 2GB",
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                description         = "Background SMS monitoring service"
                 setShowBadge(false)
                 enableLights(false)
                 enableVibration(false)
@@ -146,24 +138,24 @@ class SmsService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val openApp = PendingIntent.getActivity(
+        val openPi = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val stopAction = PendingIntent.getService(
+        val stopPi = PendingIntent.getService(
             this, 1,
             Intent(this, SmsService::class.java).apply { action = ACTION_STOP },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_upload_done)
-            .setContentTitle("O2 Auto 2GB")
-            .setContentText("Monitoring SMS — will auto-reply to O2 triggers")
-            .setContentIntent(openApp)
-            .addAction(android.R.drawable.ic_delete, "Stop", stopAction)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("O2 Auto 2GB — Active")
+            .setContentText("Monitoring SMS. Will reply \"Weiter\" to +4980112")
+            .setContentIntent(openPi)
+            .addAction(android.R.drawable.ic_delete, "Stop", stopPi)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .setOngoing(true)

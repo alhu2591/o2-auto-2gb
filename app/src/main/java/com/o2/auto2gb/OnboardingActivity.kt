@@ -42,8 +42,7 @@ class OnboardingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AppPrefs.init(this)
-        if (AppPrefs.isOnboardingDone) { startMain(); return }
+        if (AppPrefs.isOnboardingDone(this)) { startMain(); return }
         b = ActivityOnboardingBinding.inflate(layoutInflater)
         setContentView(b.root)
         b.btnBack.setOnClickListener { if (currentStep > 0) { currentStep--; showStep() } }
@@ -91,10 +90,7 @@ class OnboardingActivity : AppCompatActivity() {
 
     private fun goNext() {
         if (currentStep < steps.size - 1) { currentStep++; showStep() }
-        else {
-            AppPrefs.isOnboardingDone = true
-            startMain()
-        }
+        else { AppPrefs.setOnboardingDone(this, true); startMain() }
     }
 
     private fun startMain() {

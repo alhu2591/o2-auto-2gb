@@ -5,22 +5,24 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 
+/**
+ * directBootAware=true → fires on LOCKED_BOOT_COMPLETED (before PIN/pattern unlock).
+ * AppPrefs uses deviceProtectedStorage so it's readable at this point.
+ */
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val validActions = setOf(
             Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_LOCKED_BOOT_COMPLETED,
-            "android.intent.action.QUICKBOOT_POWERON",
+            Intent.ACTION_LOCKED_BOOT_COMPLETED,         // directBoot: before unlock
+            "android.intent.action.QUICKBOOT_POWERON",   // HTC/OnePlus
             "com.htc.intent.action.QUICKBOOT_POWERON",
-            Intent.ACTION_MY_PACKAGE_REPLACED
+            Intent.ACTION_MY_PACKAGE_REPLACED            // after app update
         )
         if (intent.action !in validActions) return
 
-        AppPrefs.init(context)
-
         // Only restart if user had it enabled before reboot
-        if (!AppPrefs.isServiceEnabled) return
+        if (!AppPrefs.isServiceEnabled(context)) return
 
         try {
             val svc = Intent(context, SmsService::class.java)

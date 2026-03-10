@@ -4,25 +4,36 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Single source of truth for app persistent state.
- * Replaces in-memory SmsServiceState which resets on process kill.
+ * Persistent state — survives process kill, reboot, app update.
+ * Uses deviceProtectedStorage so it works before screen unlock (directBootAware).
  */
 object AppPrefs {
+
     private const val FILE = "o2_prefs"
     private const val KEY_SERVICE_ENABLED = "service_enabled"
     private const val KEY_ONBOARDING_DONE = "onboarding_done"
 
-    private fun prefs(ctx: Context): SharedPreferences =
-        ctx.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+    // Accepts any context — always uses applicationContext + device protected storage
+    private fun prefs(ctx: Context): SharedPreferences {
+        val appCtx = ctx.applicationContext
+        // Device-protected storage: readable before first unlock (needed for directBootAware)
+        val storageCtx = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            appCtx.createDeviceProtectedStorageContext()
+        } else {
+            appCtx
+        }
+        return storageCtx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+    }
 
-    var isServiceEnabled: Boolean
-        get() = _ctx?.let { prefs(it).getBoolean(KEY_SERVICE_ENABLED, false) } ?: false
-        set(v) { _ctx?.let { prefs(it).edit().putBoolean(KEY_SERVICE_ENABLED, v).apply() } }
+    fun isServiceEnabled(ctx: Context): Boolean =
+        prefs(ctx).getBoolean(KEY_SERVICE_ENABLED, false)
 
-    var isOnboardingDone: Boolean
-        get() = _ctx?.let { prefs(it).getBoolean(KEY_ONBOARDING_DONE, false) } ?: false
-        set(v) { _ctx?.let { prefs(it).edit().putBoolean(KEY_ONBOARDING_DONE, v).apply() } }
+    fun setServiceEnabled(ctx: Context, enabled: Boolean) =
+        prefs(ctx).edit().putBoolean(KEY_SERVICE_ENABLED, enabled).apply()
 
-    private var _ctx: Context? = null
-    fun init(ctx: Context) { _ctx = ctx.applicationContext }
+    fun isOnboardingDone(ctx: Context): Boolean =
+        prefs(ctx).getBoolean(KEY_ONBOARDING_DONE, false)
+
+    fun setOnboardingDone(ctx: Context, done: Boolean) =
+        prefs(ctx).edit().putBoolean(KEY_ONBOARDING_DONE, done).apply()
 }

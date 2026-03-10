@@ -8,8 +8,9 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 
 /**
- * Runs every 15 minutes (min interval WorkManager allows).
- * If service should be running but isn't → restart it.
+ * Runs every 15 minutes via WorkManager (minimum allowed interval).
+ * If SmsService should be running but isn't → restart it.
+ * This is the final safety net after START_STICKY + onTaskRemoved + BootReceiver.
  */
 class ServiceWatchdogWorker(
     private val ctx: Context,
@@ -17,10 +18,9 @@ class ServiceWatchdogWorker(
 ) : Worker(ctx, params) {
 
     override fun doWork(): Result {
-        if (!AppPrefs.isServiceEnabled) return Result.success()
+        if (!AppPrefs.isServiceEnabled(ctx)) return Result.success()
         if (isServiceRunning()) return Result.success()
 
-        // Service should be running but isn't — restart it
         try {
             val intent = Intent(ctx, SmsService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -34,12 +34,11 @@ class ServiceWatchdogWorker(
     }
 
     @Suppress("DEPRECATION")
-    private fun isServiceRunning(): Boolean {
-        return try {
-            val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            am.getRunningServices(50).any {
-                it.service.className == SmsService::class.java.name
-            }
-        } catch (_: Exception) { false }
-    }
+    private fun isServiceRunning(): Boolean = try {
+        // getRunningServices() is deprecated but still returns own app's services correctly
+        val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        am.getRunningServices(50).any {
+            it.service.className == SmsService::class.java.name
+        }
+    } catch (_: Exception) { false }
 }
