@@ -211,7 +211,7 @@
             <!-- End of log -->
             <TextView
                 android:id="@+id/tvEndOfLog"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="@string/end_of_log"
@@ -220,7 +220,6 @@
                 android:fontFamily="sans-serif-light"
                 android:layout_marginBottom="24dp"
                 android:gravity="center"
-                android:layout_width="match_parent"
                 android:visibility="gone" />
 
         </LinearLayout>
