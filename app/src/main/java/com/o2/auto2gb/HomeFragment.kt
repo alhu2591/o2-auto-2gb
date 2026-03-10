@@ -1,6 +1,8 @@
 package com.o2.auto2gb
 
 import android.Manifest
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -17,6 +19,7 @@ class HomeFragment : Fragment() {
 
     private var _b: FragmentHomeBinding? = null
     private val b get() = _b!!
+    private var listenerEnabled = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         _b = FragmentHomeBinding.inflate(inflater, container, false)
@@ -26,73 +29,93 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Set initial state without triggering listener
-        b.switchService.isChecked = SmsServiceState.isRunning
-        updateStatus(SmsServiceState.isRunning)
+        // Set switch state without triggering listener
+        listenerEnabled = false
+        val running = isServiceActuallyRunning()
+        b.switchService.isChecked = running
+        updateStatus(running)
+        listenerEnabled = true
 
         b.switchService.setOnCheckedChangeListener { _, checked ->
+            if (!listenerEnabled) return@setOnCheckedChangeListener
+
             if (checked) {
                 if (!hasRequiredPermissions()) {
-                    // Revert switch silently
+                    listenerEnabled = false
                     b.switchService.isChecked = false
+                    listenerEnabled = true
                     Toast.makeText(requireContext(),
                         "Please grant SMS permissions first", Toast.LENGTH_LONG).show()
                     return@setOnCheckedChangeListener
                 }
-                val success = startServiceSafe()
-                if (!success) {
+                val ok = startServiceSafe()
+                if (!ok) {
+                    listenerEnabled = false
                     b.switchService.isChecked = false
+                    listenerEnabled = true
                 }
+                updateStatus(ok)
             } else {
                 stopServiceSafe()
+                updateStatus(false)
             }
-            updateStatus(b.switchService.isChecked)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        // Sync switch state on resume
-        b.switchService.isChecked = SmsServiceState.isRunning
-        updateStatus(SmsServiceState.isRunning)
+        // Re-sync UI with actual service state on every resume
+        val running = isServiceActuallyRunning()
+        listenerEnabled = false
+        b.switchService.isChecked = running
+        listenerEnabled = true
+        updateStatus(running)
+    }
+
+    // ── Checks if service process is actually alive ──────────────────────────
+    @Suppress("DEPRECATION")
+    private fun isServiceActuallyRunning(): Boolean {
+        return try {
+            val am = requireContext().getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            am.getRunningServices(50).any {
+                it.service.className == SmsService::class.java.name
+            }
+        } catch (_: Exception) {
+            AppPrefs.isServiceEnabled  // fallback to pref
+        }
     }
 
     private fun hasRequiredPermissions(): Boolean {
         val ctx = requireContext()
-        val sms = ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECEIVE_SMS) ==
+        return ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECEIVE_SMS) ==
+                PackageManager.PERMISSION_GRANTED &&
+               ContextCompat.checkSelfPermission(ctx, Manifest.permission.SEND_SMS) ==
                 PackageManager.PERMISSION_GRANTED
-        val send = ContextCompat.checkSelfPermission(ctx, Manifest.permission.SEND_SMS) ==
-                PackageManager.PERMISSION_GRANTED
-        return sms && send
     }
 
     private fun startServiceSafe(): Boolean {
         return try {
             val ctx = requireContext()
             val intent = Intent(ctx, SmsService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 ctx.startForegroundService(intent)
-            } else {
+            else
                 ctx.startService(intent)
-            }
-            SmsServiceState.isRunning = true
             true
         } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(requireContext(),
-                "Could not start service: ${e.message}", Toast.LENGTH_LONG).show()
-            SmsServiceState.isRunning = false
+            Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             false
         }
     }
 
     private fun stopServiceSafe() {
         try {
+            AppPrefs.isServiceEnabled = false
             requireContext().stopService(Intent(requireContext(), SmsService::class.java))
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        SmsServiceState.isRunning = false
+            // Cancel watchdog too
+            androidx.work.WorkManager.getInstance(requireContext())
+                .cancelAllWorkByTag(SmsService.WATCHDOG_TAG)
+        } catch (_: Exception) {}
     }
 
     private fun updateStatus(active: Boolean) {
